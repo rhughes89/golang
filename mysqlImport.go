@@ -15,7 +15,7 @@ func worker(handle *sql.DB,ch chan []string){
 
 	_, err := handle.Exec("insert into test (ITEM_ID,WM_DEPT_NUM,WM_ITEM_NUM,WM_HOST_DESCRIPTION,UPC,PRIMARY_SHELF_ID,IS_BASE_ITEM,VARIANT_ITEMS_NUM,BASE_ITEM_ID) values (?,?,?,?,?,?,?,?,?)",m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8])
 		if err != nil {
-			fmt.Println("INSERT ERROR:",err)		
+			fmt.Println("INSERT ERROR:",err)
 		}
 	}
 }
@@ -24,10 +24,9 @@ func main () {
 
 	// CLI ARGUMENTS
 	csvFile := os.Args[1]
-	workerCount := os.Args[2]
-	iWorker, err := strconv.Atoi(workerCount)
+	workerCount, err := strconv.Atoi(os.Args[2])
 	if err != nil {
-		fmt.Println(iWorker)
+		fmt.Println(workerCount)
 	}
 
 	// OPEN THE CSV FILE
@@ -42,7 +41,7 @@ func main () {
 	con, err := sql.Open("mysql","root:@unix(/tmp/mysql.sock)/fct?loc=Local")
 	if err != nil {
 		fmt.Println("DB CONNECT ERROR:", err)
-		return		
+		return
 	}
 	defer con.Close()
 
@@ -55,7 +54,7 @@ func main () {
 	records_ch := make(chan []string)
 
 	// DO WORKER
-	for i := 0; i < iWorker; i++ {
+	for i := 0; i < workerCount; i++ {
 		go worker(con,records_ch)
 	}
 
