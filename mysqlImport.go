@@ -19,7 +19,6 @@ func worker(handle *sql.DB,ch chan []string){
 	}
 }
 
-
 type JSONData struct {
     Username string `json:username`
     Password string `json:password`
@@ -80,5 +79,4 @@ func main () {
 		// LETS POPULATE THAT CHANNEL
 		records_ch <- record
 	}
-	fmt.Println(JSONStruct.Username)
 }
