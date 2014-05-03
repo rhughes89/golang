@@ -9,7 +9,7 @@ _test
 pkg
 src
 
-conf.json
+config.json
 
 # Architecture specific extensions/prefixes
 *.[568vq]

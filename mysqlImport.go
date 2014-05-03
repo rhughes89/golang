@@ -14,17 +14,17 @@ import (
 
 func worker(handle *sql.DB,ch chan []string){
 	for m := range ch{
-		_, err := handle.Exec("insert into testTable (ITEM_ID,WM_DEPT_NUM,WM_ITEM_NUM,WM_HOST_DESCRIPTION,UPC,PRIMARY_SHELF_ID,IS_BASE_ITEM,VARIANT_ITEMS_NUM,BASE_ITEM_ID) values (?,?,?,?,?,?,?,?,?)",m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8])
+		_, err := handle.Exec("insert into test (ITEM_ID,WM_DEPT_NUM,WM_ITEM_NUM,WM_HOST_DESCRIPTION,UPC,PRIMARY_SHELF_ID,IS_BASE_ITEM,VARIANT_ITEMS_NUM,BASE_ITEM_ID) values (?,?,?,?,?,?,?,?,?)",m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8])
 		if err != nil {panic(err)}
 	}
 }
 
 
 type JSONData struct {
-    username string `json:username`
-    password string `json:password`
-    database string `json:database`
-    table string `json:table`
+    Username string `json:username`
+    Password string `json:password`
+    Database string `json:database`
+    Table string `json:table`
 }
 
 func (q *JSONData) FromJSON(file string) error {
@@ -51,7 +51,7 @@ func main () {
 	defer file.Close()
 
 	// CONNECT TO THE DATABASE
-	con, err := sql.Open("mysql",JSONStruct.username+":"+JSONStruct.password+"@unix(/tmp/mysql.sock)/test?loc=Local")
+	con, err := sql.Open("mysql",JSONStruct.Username+":"+JSONStruct.Password+"@unix(/tmp/mysql.sock)/"+JSONStruct.Database+"?loc=Local")
 	if err != nil {panic(err)}
 	defer con.Close()
 
@@ -80,5 +80,5 @@ func main () {
 		// LETS POPULATE THAT CHANNEL
 		records_ch <- record
 	}
-	fmt.Println(JSONStruct.username)
+	fmt.Println(JSONStruct.Username)
 }
