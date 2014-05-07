@@ -12,9 +12,9 @@ import (
 	"encoding/json"
 )
 
-func worker(handle *sql.DB,ch chan []string){
+func worker(handle *sql.DB,ch chan []string,table string){
 	for m := range ch{
-		_, err := handle.Exec("insert into test (ITEM_ID,WM_DEPT_NUM,WM_ITEM_NUM,WM_HOST_DESCRIPTION,UPC,PRIMARY_SHELF_ID,IS_BASE_ITEM,VARIANT_ITEMS_NUM,BASE_ITEM_ID) values (?,?,?,?,?,?,?,?,?)",m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8])
+		_, err := handle.Exec("INSERT INTO "+table+" (ITEM_ID,WM_DEPT_NUM,WM_ITEM_NUM,WM_HOST_DESCRIPTION,UPC,PRIMARY_SHELF_ID,IS_BASE_ITEM,VARIANT_ITEMS_NUM,BASE_ITEM_ID) values (?,?,?,?,?,?,?,?,?)",m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8])
 		if err != nil {panic(err)}
 	}
 }
@@ -63,7 +63,7 @@ func main () {
 
 	// DO WORKER
 	for i := 0; i < workerCount; i++ {
-		go worker(con,records_ch)
+		go worker(con,records_ch,JSONStruct.Table)
 	}
 
 	// ITERATE THROUGH THE FILE
