@@ -10,12 +10,23 @@ import (
 		_ "github.com/go-sql-driver/mysql"
 	"io/ioutil"
 	"encoding/json"
+	"strings"
 )
 
 func worker(handle *sql.DB,ch chan []string,table string){
+	payload := make([]string, 0)
 	for m := range ch{
-		_, err := handle.Exec("INSERT INTO "+table+" (ITEM_ID,WM_DEPT_NUM,WM_ITEM_NUM,WM_HOST_DESCRIPTION,UPC,PRIMARY_SHELF_ID,IS_BASE_ITEM,VARIANT_ITEMS_NUM,BASE_ITEM_ID) values (?,?,?,?,?,?,?,?,?)",m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8])
-		if err != nil {panic(err)}
+			payload = append(payload, "('"+m[0]+"')")
+
+		//_, err := handle.Exec("INSERT INTO "+table+" (ITEM_ID,WM_DEPT_NUM,WM_ITEM_NUM,WM_HOST_DESCRIPTION,UPC,PRIMARY_SHELF_ID,IS_BASE_ITEM,VARIANT_ITEMS_NUM,BASE_ITEM_ID) values (?,?,?,?,?,?,?,?,?)",m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8])
+		//if err != nil {panic(err)}
+
+		if(len(payload) > 100){
+				sql := "INSERT into " + table + "(ITEM_ID) values " + strings.Join(payload , ",");
+				_, err := handle.Exec(sql)
+				payload = make([]string,0)
+				if err != nil {panic(err)}
+		}
 	}
 }
 
