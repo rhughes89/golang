@@ -9,6 +9,7 @@ _test
 
 
 src/
+config.json
 
 # Architecture specific extensions/prefixes
 *.[568vq]
