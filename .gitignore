@@ -24,5 +24,7 @@ _cgo_export.*
 _testmain.go
 
 *.csv
+*.rdb
+*.txt
 *.exe
 *.test
