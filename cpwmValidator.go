@@ -9,17 +9,34 @@ import (
 	"io"
 	"io/ioutil"
 	"encoding/csv"
+	"strings"
+	"sort"
+	"flag"
 )
 
 func main () {
+
+	dtcFile := flag.String("dtc","","dtc file location")
+	warehouseFile := flag.String("warehouse","","warehouse file location")
+	lineListDir := flag.String("linelist","","linelist folder location")
+	flag.Parse()
+
 	// Connect to Redis
 	redisConn, err := redis.Dial("tcp", ":6379")
 	if err != nil {fmt.Println("ERROR: Cannot connect to Redis")}
 
 	// Connect to mysql
 	dbConn,err := sql.Open("mysql","jrobles:jasmineo212@tcp(i.db1-slave.realtimeprocess.net:3306)/realtime_cpwm")
+	//dbConn,err := sql.Open("mysql","jrobles:pa11word@tcp(dante.realtimeprocess.net:3306)/realtime_cpwm_dev")
 	if err != nil {fmt.Println("ERROR:","Cannot connect to database")}
 	defer dbConn.Close()
+
+	// clear out the SKUs SET
+	redisConn.Do("DEL","skus")
+	redisConn.Do("DEL","linelists")
+	redisConn.Do("DEL","LLRecap")
+	redisConn.Do("DEL","metaFields")
+	redisConn.Do("DEL","metaData")
 
 	// Get data from DB and add to Redis
 	getProducts(dbConn,redisConn)
@@ -27,7 +44,7 @@ func main () {
 	getMetaData(dbConn,redisConn)
 
 	// add blank fields to sku HASH
-	skus,_ := redis.Strings(redisConn.Do("SMEMBERS", "skus"))
+	skus,_ := redis.Strings(redisConn.Do("SORT", "skus","ALPHA"))
 	metaFields,_ := Map(redisConn.Do("HGETALL","metaFields"))
 	for _,v := range skus {
 		for k,_ := range metaFields {
@@ -42,6 +59,24 @@ func main () {
 		redisConn.Do("HSET","CPWM:sku:"+v,"Product Notes","")
 	}
 
+/*
+	a := make([]string, 0)
+	for k,_ := range metaFields {
+		a[0] = k
+		if k == "Carton Units" || k == "Active Units" || k == "SDC ECom Units" {
+			a[0] = "0"
+		}else {
+			a[0] = ""
+		}
+	}
+	for _,v := range skus {
+		redisConn.Do("HMSET","sku:"+v,a...)
+		redisConn.Do("HMSET","CPWM:sku:"+v,a...)
+		redisConn.Do("HSET","sku:"+v,"Products Notes","")
+		redisConn.Do("HSET","CPWM:sku:"+v,"Products Notes","")
+	}
+*/
+
 	// append DB values to sku HASH
 	for _,sku := range skus {
 		updateSkuHash(sku,redisConn)
@@ -50,16 +85,28 @@ func main () {
 	fmt.Println("===============================================================")
 	fmt.Println("LineList missing SKUs")
 	fmt.Println("===============================================================")
-	files, _ := ioutil.ReadDir("linelists/")
-	for _, f := range files {
+	files,_ := ioutil.ReadDir(string(*lineListDir))
+	for _,f := range files {
 		if f.Name() != ".DS_Store" {
-			processLinelist("linelists/"+f.Name(),redisConn)
+			oof := strings.Split(f.Name(),"_")
+			oof = strings.Split(oof[len(oof)-1],".")
+			redisConn.Do("HSET","linelists",oof[0],f.Name())
 		}
 	}
-	fmt.Println("===============================================================","\n")
+	unsortedFiles,_ := Map(redisConn.Do("HGETALL","linelists"))
+	keys := make([]string, 0, len(unsortedFiles))
+	for k := range unsortedFiles {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+    for i := range keys {
+		//fmt.Println(unsortedFiles[keys[i]])
+		processLinelist(string(*lineListDir)+unsortedFiles[keys[i]],redisConn)
+    }
 
 	fileRecap,err := Map(redisConn.Do("HGETALL","LLRecap"))
 	if err != nil {fmt.Println(err)}
+	fmt.Println("\n")
 	fmt.Println("===============================================================")
 	fmt.Println("LineList record count recap")
 	fmt.Println("===============================================================")
@@ -68,11 +115,11 @@ func main () {
 	}
 	fmt.Println("===============================================================","\n")
 
-	processDTC("DTC_20140709060001.csv",redisConn)
-	processWarehouse("DCAvl_20140709053252.csv",redisConn)
+	// Process DTC and WH
+	processDTC(string(*dtcFile),redisConn)
+	processWarehouse(string(*warehouseFile),redisConn)
 
 	// compare hashes
-
 	fmt.Println("===============================================================")
 	fmt.Println("RealTIME DB vs CPWM data comparison")
 	fmt.Println("===============================================================")
@@ -109,7 +156,7 @@ func getProducts (dbConn *sql.DB,redisConn redis.Conn) {
 			}
 		}
 		// Create the redis SET with upc's and the sku HASH
-		redis.Strings(redisConn.Do("SADD","skus",result[1]))
+		redisConn.Do("SADD","skus",result[1])
 		redisConn.Do("HMSET","sku:"+result[1],"id",result[0],"sku",result[1],"Product Title",result[2],"Web Item Description",result[3],"Product Notes",result[4])
 	}
 }
@@ -134,7 +181,6 @@ func getMetaFields (dbConn *sql.DB,redisConn redis.Conn) {
 	for rows.Next() {
 		err = rows.Scan(dest...)
 		if err != nil {fmt.Println("Fnailed to scan row", err)}
-
 		for i, raw := range rawResult {
 			if raw == nil {
 				result[i] = "\\N"
