@@ -7,7 +7,7 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
+var status string
 type Product struct {
 	Id string
 	Sku string
@@ -16,10 +16,17 @@ type Product struct {
 	ProductNotes string
 }
 
+type Status struct {
+	Status string
+}
+
 func main() {
 
 	http.HandleFunc("/", indexAction)
 	http.HandleFunc("/create", createAction)
+	http.HandleFunc("/read", readAction)
+	//http.HandleFunc("/update", updateAction)
+	http.HandleFunc("/delete", deleteAction)
 
 	err := http.ListenAndServe(":6900", nil)
 	if err != nil {fmt.Println(err)}
@@ -39,22 +46,6 @@ func getRecord(c *mgo.Collection,field string, value string) (Product) {
 	return result
 }
 
-
-func createAction(res http.ResponseWriter, req *http.Request) {
-	session, err := mgo.Dial("localhost:27017")
-	if err != nil {panic(err)}
-	defer session.Close()
-	c := session.DB("tt_products").C("products")
-
-	decoder := json.NewDecoder(req.Body)
-	var p Product
-	err = decoder.Decode(&p)
-	if err != nil {fmt.Println(err)}
-
-	insertRecord(c,&Product{p.Id,p.Sku,p.ProductTitle,p.WebItemDescription,p.ProductNotes})
-	fmt.Println(p)
-}
-
 func indexAction(res http.ResponseWriter, req *http.Request) {
 	session, err := mgo.Dial("localhost:27017")
 	if err != nil {panic(err)}
@@ -65,5 +56,72 @@ func indexAction(res http.ResponseWriter, req *http.Request) {
 	caralho,_ := json.Marshal(getRecord(c,"id","12"))
 	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(res,string(caralho))
-	//fmt.Fprintf(res,"oof")
+}
+
+func createAction(res http.ResponseWriter, req *http.Request) {
+	session, err := mgo.Dial("localhost:27017")
+	if err != nil {panic(err)}
+	defer session.Close()
+	c := session.DB("tt_products").C("products")
+
+	decoder := json.NewDecoder(req.Body)
+	var p Product
+	err = decoder.Decode(&p)
+	if err != nil {
+		fmt.Println(err)
+		status = "ERROR: INVALID JSON"
+	} else {
+		err = c.Insert(&Product{p.Id,p.Sku,p.ProductTitle,p.WebItemDescription,p.ProductNotes})
+		res.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			status = "ERROR"
+			fmt.Println(err)
+		} else {
+			status = "SUCCESS"
+		}
+	}
+	b,_ := json.Marshal(&Status{Status:status})
+	fmt.Fprintf(res,string(b))
+}
+
+func readAction(res http.ResponseWriter, req *http.Request) {
+	session, err := mgo.Dial("localhost:27017")
+	if err != nil {panic(err)}
+	defer session.Close()
+	c := session.DB("tt_products").C("products")
+
+	decoder := json.NewDecoder(req.Body)
+	var p Product
+	err = decoder.Decode(&p)
+	if err != nil {fmt.Println(err)}
+
+	caralho,_ := json.Marshal(getRecord(c,"sku",p.Sku))
+	res.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(res,string(caralho))
+}
+
+func deleteAction(res http.ResponseWriter, req *http.Request) {
+	session, err := mgo.Dial("localhost:27017")
+	if err != nil {panic(err)}
+	defer session.Close()
+	c := session.DB("tt_products").C("products")
+
+	decoder := json.NewDecoder(req.Body)
+	var p Product
+	err = decoder.Decode(&p)
+	if err != nil {
+		fmt.Println(err)
+		status = "ERROR: INVALID JSON"
+	} else {
+		err = c.Remove(bson.M{"sku":p.Sku})
+		res.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			status = "ERROR"
+			fmt.Println(err)
+		} else {
+			status = "SUCCESS"
+		}
+	}
+	b,_ := json.Marshal(&Status{Status:status})
+	fmt.Fprintf(res,string(b))
 }
