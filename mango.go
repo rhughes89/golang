@@ -14,11 +14,6 @@ type Product struct {
 	ProductTitle string
 	WebItemDescription string
 	ProductNotes string
-	PadIcon string
-	SubDirectory string
-	DefaultDirectory2 string
-	Family  string
-	Kit string
 }
 
 func main() {
@@ -46,17 +41,17 @@ func getRecord(c *mgo.Collection,field string, value string) (Product) {
 
 
 func createAction(res http.ResponseWriter, req *http.Request) {
-//	session, err := mgo.Dial("localhost:27017")
-//	if err != nil {panic(err)}
-//	defer session.Close()
-//	c := session.DB("tt_products").C("products")
+	session, err := mgo.Dial("localhost:27017")
+	if err != nil {panic(err)}
+	defer session.Close()
+	c := session.DB("tt_products").C("products")
 
 	decoder := json.NewDecoder(req.Body)
 	var p Product
-	err := decoder.Decode(&p)
+	err = decoder.Decode(&p)
 	if err != nil {fmt.Println(err)}
 
-	//insertRecord(c,&Product{"12","122333455","Some Title","Some product description"})
+	insertRecord(c,&Product{p.Id,p.Sku,p.ProductTitle,p.WebItemDescription,p.ProductNotes})
 	fmt.Println(p)
 }
 
