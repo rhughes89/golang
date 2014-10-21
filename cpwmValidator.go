@@ -144,6 +144,8 @@ func main() {
 	fmt.Println("===============================================================")
 	compareHashes(redisConn)
 	fmt.Println("===============================================================", "\n")
+
+	purgeFeeds()
 }
 
 func getProducts(dbConn *sql.DB, redisConn redis.Conn) {
